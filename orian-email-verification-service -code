@@ -1,0 +1,1599 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext
+from collections import Counter
+import re
+import math
+
+
+# ==========================================================
+# ORIAN SPAM EMAIL CLASSIFIER
+# ==========================================================
+
+
+# ==========================================================
+# TRAINING DATA
+# ==========================================================
+
+spam_emails = [
+    "Win a free prize now",
+    "Claim your free cash reward",
+    "Congratulations you won a lottery",
+    "Click here to claim your gift",
+    "Get free money now",
+    "Limited offer buy now",
+    "You have won a free iPhone",
+    "Earn money from home",
+    "Exclusive deal just for you",
+    "Claim your lottery prize today",
+    "Urgent you won a cash reward",
+    "Get a free gift card",
+    "Buy now and win big",
+    "Congratulations your prize is waiting",
+    "Free entry in our contest",
+    "Act now to claim your reward",
+    "You are selected for a special offer",
+    "Win exciting prizes today",
+    "Cheap products available now",
+    "Click now for a free bonus",
+]
+
+ham_emails = [
+    "Hello how are you",
+    "Let's meet tomorrow",
+    "Please send me the notes",
+    "Your meeting is scheduled",
+    "Can we talk today",
+    "Thank you for your help",
+    "Please call me when you are free",
+    "The class starts at 10 AM",
+    "I will reach home soon",
+    "Please check your email",
+    "Meeting is postponed until Monday",
+    "Can you share the assignment",
+    "I am going to college",
+    "See you tomorrow morning",
+    "Please bring your notebook",
+    "Your order has been delivered",
+    "Let us have lunch together",
+    "The project is completed",
+    "Please reply when you are available",
+    "Have a nice day",
+]
+
+history = []
+
+
+# ==========================================================
+# TEXT PROCESSING
+# ==========================================================
+
+def words(text):
+    return re.findall(r"[a-z0-9]+", text.lower())
+
+
+# ==========================================================
+# NAIVE BAYES
+# ==========================================================
+
+class NaiveBayes:
+
+    def __init__(self):
+        self.spam = Counter()
+        self.ham = Counter()
+        self.vocabulary = set()
+        self.spam_docs = 0
+        self.ham_docs = 0
+        self.spam_total = 0
+        self.ham_total = 0
+
+    def train(self):
+
+        self.spam.clear()
+        self.ham.clear()
+        self.vocabulary.clear()
+
+        self.spam_docs = len(spam_emails)
+        self.ham_docs = len(ham_emails)
+
+        for email in spam_emails:
+            w = words(email)
+            self.spam.update(w)
+            self.vocabulary.update(w)
+
+        for email in ham_emails:
+            w = words(email)
+            self.ham.update(w)
+            self.vocabulary.update(w)
+
+        self.spam_total = sum(self.spam.values())
+        self.ham_total = sum(self.ham.values())
+
+    def predict(self, text):
+
+        w = words(text)
+
+        if not w:
+            return "Unknown", 0.0, 100.0
+
+        total_docs = self.spam_docs + self.ham_docs
+        vocab = len(self.vocabulary)
+
+        spam_score = math.log(
+            self.spam_docs / total_docs
+        )
+
+        ham_score = math.log(
+            self.ham_docs / total_docs
+        )
+
+        for word in w:
+
+            spam_prob = (
+                self.spam[word] + 1
+            ) / (
+                self.spam_total + vocab
+            )
+
+            ham_prob = (
+                self.ham[word] + 1
+            ) / (
+                self.ham_total + vocab
+            )
+
+            spam_score += math.log(spam_prob)
+            ham_score += math.log(ham_prob)
+
+        highest = max(spam_score, ham_score)
+
+        spam_exp = math.exp(
+            spam_score - highest
+        )
+
+        ham_exp = math.exp(
+            ham_score - highest
+        )
+
+        spam_percentage = (
+            spam_exp /
+            (spam_exp + ham_exp)
+        ) * 100
+
+        ham_percentage = 100 - spam_percentage
+
+        if spam_score > ham_score:
+            return (
+                "Spam",
+                spam_percentage,
+                ham_percentage
+            )
+
+        return (
+            "Ham",
+            spam_percentage,
+            ham_percentage
+        )
+
+
+model = NaiveBayes()
+model.train()
+
+
+# ==========================================================
+# COLORS
+# ==========================================================
+
+BG = "#f1f5f9"
+WHITE = "#ffffff"
+DARK = "#111827"
+BLUE = "#2563eb"
+BLUE_DARK = "#1d4ed8"
+GREEN = "#16a34a"
+RED = "#dc2626"
+GRAY = "#64748b"
+LIGHT = "#e2e8f0"
+LIGHT_RED = "#fee2e2"
+LIGHT_GREEN = "#dcfce7"
+
+
+# ==========================================================
+# ROOT WINDOW
+# ==========================================================
+
+root = tk.Tk()
+
+root.title("Orian Spam Email Classifier")
+root.configure(bg=BG)
+
+# Get real screen dimensions.
+root.update_idletasks()
+
+screen_w = root.winfo_screenwidth()
+screen_h = root.winfo_screenheight()
+
+# Never make the application wider than the screen.
+window_w = max(780, screen_w - 20)
+window_h = max(600, screen_h - 80)
+
+# If screen is smaller than 780, use the actual screen size.
+window_w = min(window_w, screen_w - 10)
+window_h = min(window_h, screen_h - 50)
+
+root.geometry(
+    f"{window_w}x{window_h}+5+5"
+)
+
+root.minsize(700, 550)
+
+
+# ==========================================================
+# RESPONSIVE SIDEBAR WIDTH
+# ==========================================================
+
+if screen_w < 900:
+    SIDEBAR_WIDTH = 155
+else:
+    SIDEBAR_WIDTH = 190
+
+
+# ==========================================================
+# SIDEBAR
+# ==========================================================
+
+sidebar = tk.Frame(
+    root,
+    bg=DARK,
+    width=SIDEBAR_WIDTH
+)
+
+sidebar.pack(
+    side="left",
+    fill="y"
+)
+
+sidebar.pack_propagate(False)
+
+
+# ==========================================================
+# SIDEBAR LOGO
+# ==========================================================
+
+tk.Label(
+    sidebar,
+    text="◈",
+    font=("Arial", 25, "bold"),
+    fg="#60a5fa",
+    bg=DARK
+).pack(pady=(18, 0))
+
+tk.Label(
+    sidebar,
+    text="ORIAN",
+    font=("Arial", 18, "bold"),
+    fg=WHITE,
+    bg=DARK
+).pack()
+
+tk.Label(
+    sidebar,
+    text="SPAM CLASSIFIER",
+    font=("Arial", 7, "bold"),
+    fg="#94a3b8",
+    bg=DARK
+).pack(pady=(0, 18))
+
+
+# ==========================================================
+# MAIN AREA
+# ==========================================================
+
+main = tk.Frame(
+    root,
+    bg=BG
+)
+
+main.pack(
+    side="left",
+    fill="both",
+    expand=True
+)
+
+
+# ==========================================================
+# SIDEBAR BUTTON
+# ==========================================================
+
+def sidebar_button(text, command):
+
+    button = tk.Button(
+        sidebar,
+        text=text,
+        command=command,
+        font=("Arial", 9),
+        anchor="w",
+        bg=DARK,
+        fg="#cbd5e1",
+        activebackground="#1e293b",
+        activeforeground=WHITE,
+        bd=0,
+        padx=12,
+        pady=10,
+        cursor="hand2"
+    )
+
+    button.pack(
+        fill="x"
+    )
+
+
+# ==========================================================
+# HEADER
+# ==========================================================
+
+header = tk.Frame(
+    main,
+    bg=BG
+)
+
+header.pack(
+    fill="x",
+    padx=20,
+    pady=(15, 8)
+)
+
+tk.Label(
+    header,
+    text="Email Spam Detection",
+    font=("Arial", 21, "bold"),
+    fg=DARK,
+    bg=BG
+).pack(anchor="w")
+
+tk.Label(
+    header,
+    text="AI-powered email classification using Naive Bayes",
+    font=("Arial", 9),
+    fg=GRAY,
+    bg=BG
+).pack(anchor="w")
+
+
+# ==========================================================
+# EMAIL CARD
+# ==========================================================
+
+email_card = tk.Frame(
+    main,
+    bg=WHITE,
+    highlightbackground=LIGHT,
+    highlightthickness=1
+)
+
+email_card.pack(
+    fill="x",
+    padx=20,
+    pady=5
+)
+
+tk.Label(
+    email_card,
+    text="EMAIL MESSAGE",
+    font=("Arial", 12, "bold"),
+    fg=DARK,
+    bg=WHITE
+).pack(
+    anchor="w",
+    padx=18,
+    pady=(14, 3)
+)
+
+tk.Label(
+    email_card,
+    text="Enter the message you want the classifier to analyze.",
+    font=("Arial", 9),
+    fg=GRAY,
+    bg=WHITE
+).pack(
+    anchor="w",
+    padx=18
+)
+
+
+# ==========================================================
+# EMAIL TEXT BOX
+# ==========================================================
+
+email_box = scrolledtext.ScrolledText(
+    email_card,
+    height=5,
+    font=("Arial", 10),
+    wrap=tk.WORD,
+    relief="solid",
+    bd=1
+)
+
+email_box.pack(
+    fill="x",
+    padx=18,
+    pady=10
+)
+
+
+# ==========================================================
+# BUTTONS
+# ==========================================================
+
+button_frame = tk.Frame(
+    email_card,
+    bg=WHITE
+)
+
+button_frame.pack(
+    anchor="w",
+    padx=18,
+    pady=(0, 14)
+)
+
+
+# ==========================================================
+# RESULT VARIABLES
+# ==========================================================
+
+result_title = None
+result_subtitle = None
+spam_label = None
+ham_label = None
+spam_bar = None
+ham_bar = None
+analysis_box = None
+keyword_label = None
+
+
+# ==========================================================
+# CLEAR
+# ==========================================================
+
+def clear_email():
+
+    email_box.delete(
+        "1.0",
+        tk.END
+    )
+
+    result_title.config(
+        text="READY FOR ANALYSIS",
+        fg=BLUE
+    )
+
+    result_subtitle.config(
+        text="Enter an email above and click Analyze Email"
+    )
+
+    spam_label.config(
+        text="Spam\n0.00%"
+    )
+
+    ham_label.config(
+        text="Ham\n0.00%"
+    )
+
+    spam_bar.place(
+        x=0,
+        y=0,
+        width=0,
+        height=16
+    )
+
+    ham_bar.place(
+        x=0,
+        y=0,
+        width=0,
+        height=16
+    )
+
+    keyword_label.config(
+        text="Suspicious Terms\nNone detected",
+        fg=GRAY
+    )
+
+    analysis_box.config(
+        state="normal"
+    )
+
+    analysis_box.delete(
+        "1.0",
+        tk.END
+    )
+
+    analysis_box.insert(
+        tk.END,
+        "No analysis performed yet."
+    )
+
+    analysis_box.config(
+        state="disabled"
+    )
+
+
+# ==========================================================
+# ANALYZE
+# ==========================================================
+
+def analyze_email():
+
+    text = email_box.get(
+        "1.0",
+        tk.END
+    ).strip()
+
+    if not text:
+
+        messagebox.showwarning(
+            "Empty Email",
+            "Please enter an email message first."
+        )
+
+        return
+
+    category, spam_prob, ham_prob = model.predict(
+        text
+    )
+
+    history.append({
+        "text": text,
+        "category": category,
+        "spam": spam_prob,
+        "ham": ham_prob
+    })
+
+    email_words = words(text)
+
+    suspicious_words = {
+        "free",
+        "win",
+        "winner",
+        "won",
+        "prize",
+        "cash",
+        "reward",
+        "claim",
+        "urgent",
+        "offer",
+        "bonus",
+        "money",
+        "lottery",
+        "gift",
+        "click",
+        "buy",
+        "selected",
+        "congratulations"
+    }
+
+    found = []
+
+    for word in email_words:
+
+        if (
+            word in suspicious_words
+            and word not in found
+        ):
+            found.append(word)
+
+    # ------------------------------------------------------
+    # RESULT TITLE
+    # ------------------------------------------------------
+
+    if category == "Spam":
+
+        result_title.config(
+            text="SPAM DETECTED",
+            fg=RED
+        )
+
+        result_subtitle.config(
+            text="This message contains patterns associated with spam."
+        )
+
+    else:
+
+        result_title.config(
+            text="NOT SPAM",
+            fg=GREEN
+        )
+
+        result_subtitle.config(
+            text="This message is classified as normal email."
+        )
+
+    # ------------------------------------------------------
+    # PROBABILITY LABELS
+    # ------------------------------------------------------
+
+    spam_label.config(
+        text=f"Spam\n{spam_prob:.2f}%"
+    )
+
+    ham_label.config(
+        text=f"Ham\n{ham_prob:.2f}%"
+    )
+
+    # ------------------------------------------------------
+    # PROBABILITY BARS
+    # ------------------------------------------------------
+
+    spam_bar_bg.update_idletasks()
+    ham_bar_bg.update_idletasks()
+
+    spam_width = spam_bar_bg.winfo_width()
+    ham_width = ham_bar_bg.winfo_width()
+
+    spam_bar.place(
+        x=0,
+        y=0,
+        width=max(
+            1,
+            int(spam_width * spam_prob / 100)
+        ),
+        height=16
+    )
+
+    ham_bar.place(
+        x=0,
+        y=0,
+        width=max(
+            1,
+            int(ham_width * ham_prob / 100)
+        ),
+        height=16
+    )
+
+    # ------------------------------------------------------
+    # SUSPICIOUS TERMS
+    # ------------------------------------------------------
+
+    if found:
+
+        keyword_label.config(
+            text=(
+                "Suspicious Terms\n"
+                + ", ".join(found)
+            ),
+            fg=RED
+        )
+
+    else:
+
+        keyword_label.config(
+            text=(
+                "Suspicious Terms\n"
+                "None detected"
+            ),
+            fg=GREEN
+        )
+
+    # ------------------------------------------------------
+    # ANALYSIS
+    # ------------------------------------------------------
+
+    analysis_box.config(
+        state="normal"
+    )
+
+    analysis_box.delete(
+        "1.0",
+        tk.END
+    )
+
+    analysis_box.insert(
+        tk.END,
+        "CLASSIFICATION\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        "────────────────────────────\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        f"Category: {category}\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        f"Spam probability: {spam_prob:.2f}%\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        f"Ham probability: {ham_prob:.2f}%\n\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        "MESSAGE STATISTICS\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        "────────────────────────────\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        f"Total words: {len(email_words)}\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        f"Unique words: {len(set(email_words))}\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        f"Suspicious terms: {len(found)}\n\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        "MODEL\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        "────────────────────────────\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        "Algorithm: Multinomial Naive Bayes\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        f"Training spam emails: {len(spam_emails)}\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        f"Training ham emails: {len(ham_emails)}\n"
+    )
+
+    analysis_box.insert(
+        tk.END,
+        f"Vocabulary size: {len(model.vocabulary)}\n\n"
+    )
+
+    if category == "Spam":
+
+        analysis_box.insert(
+            tk.END,
+            "The classifier found patterns that "
+            "are more strongly associated with "
+            "spam in the training data."
+        )
+
+    else:
+
+        analysis_box.insert(
+            tk.END,
+            "The classifier found patterns that "
+            "are more strongly associated with "
+            "normal email in the training data."
+        )
+
+    analysis_box.config(
+        state="disabled"
+    )
+
+
+# ==========================================================
+# ANALYZE BUTTON
+# ==========================================================
+
+tk.Button(
+    button_frame,
+    text="ANALYZE EMAIL",
+    command=analyze_email,
+    font=("Arial", 9, "bold"),
+    bg=BLUE,
+    fg=WHITE,
+    activebackground=BLUE_DARK,
+    activeforeground=WHITE,
+    bd=0,
+    padx=18,
+    pady=8,
+    cursor="hand2"
+).pack(
+    side="left"
+)
+
+
+# ==========================================================
+# CLEAR BUTTON
+# ==========================================================
+
+tk.Button(
+    button_frame,
+    text="CLEAR",
+    command=clear_email,
+    font=("Arial", 9, "bold"),
+    bg="#e5e7eb",
+    fg=DARK,
+    activebackground="#d1d5db",
+    bd=0,
+    padx=18,
+    pady=8,
+    cursor="hand2"
+).pack(
+    side="left",
+    padx=8
+)
+
+
+# ==========================================================
+# RESULT AREA
+# ==========================================================
+
+result_area = tk.Frame(
+    main,
+    bg=BG
+)
+
+result_area.pack(
+    fill="both",
+    expand=True,
+    padx=20,
+    pady=8
+)
+
+
+# ==========================================================
+# RESULT STATUS
+# ==========================================================
+
+status_card = tk.Frame(
+    result_area,
+    bg=WHITE,
+    highlightbackground=LIGHT,
+    highlightthickness=1
+)
+
+status_card.pack(
+    fill="x"
+)
+
+result_title = tk.Label(
+    status_card,
+    text="READY FOR ANALYSIS",
+    font=("Arial", 18, "bold"),
+    fg=BLUE,
+    bg=WHITE
+)
+
+result_title.pack(
+    pady=(13, 2)
+)
+
+result_subtitle = tk.Label(
+    status_card,
+    text="Enter an email above and click Analyze Email",
+    font=("Arial", 9),
+    fg=GRAY,
+    bg=WHITE
+)
+
+result_subtitle.pack(
+    pady=(0, 13)
+)
+
+
+# ==========================================================
+# DASHBOARD
+# ==========================================================
+
+dashboard = tk.Frame(
+    result_area,
+    bg=BG
+)
+
+dashboard.pack(
+    fill="both",
+    expand=True,
+    pady=(8, 0)
+)
+
+# Responsive grid.
+dashboard.grid_columnconfigure(
+    0,
+    weight=3
+)
+
+dashboard.grid_columnconfigure(
+    1,
+    weight=2
+)
+
+dashboard.grid_rowconfigure(
+    0,
+    weight=1
+)
+
+
+# ==========================================================
+# ANALYSIS CARD
+# ==========================================================
+
+analysis_card = tk.Frame(
+    dashboard,
+    bg=WHITE,
+    highlightbackground=LIGHT,
+    highlightthickness=1
+)
+
+analysis_card.grid(
+    row=0,
+    column=0,
+    sticky="nsew",
+    padx=(0, 5)
+)
+
+tk.Label(
+    analysis_card,
+    text="DETECTION ANALYSIS",
+    font=("Arial", 12, "bold"),
+    fg=DARK,
+    bg=WHITE
+).pack(
+    anchor="w",
+    padx=15,
+    pady=11
+)
+
+analysis_box = scrolledtext.ScrolledText(
+    analysis_card,
+    font=("Arial", 9),
+    wrap=tk.WORD,
+    bg="#f8fafc",
+    relief="flat",
+    bd=0
+)
+
+analysis_box.pack(
+    fill="both",
+    expand=True,
+    padx=10,
+    pady=(0, 10)
+)
+
+analysis_box.insert(
+    tk.END,
+    "No analysis performed yet."
+)
+
+analysis_box.config(
+    state="disabled"
+)
+
+
+# ==========================================================
+# PROBABILITY CARD
+# ==========================================================
+
+probability_card = tk.Frame(
+    dashboard,
+    bg=WHITE,
+    highlightbackground=LIGHT,
+    highlightthickness=1
+)
+
+probability_card.grid(
+    row=0,
+    column=1,
+    sticky="nsew",
+    padx=(5, 0)
+)
+
+tk.Label(
+    probability_card,
+    text="PROBABILITY",
+    font=("Arial", 12, "bold"),
+    fg=DARK,
+    bg=WHITE
+).pack(
+    anchor="w",
+    padx=15,
+    pady=11
+)
+
+
+# ==========================================================
+# SPAM PROBABILITY
+# ==========================================================
+
+spam_label = tk.Label(
+    probability_card,
+    text="Spam\n0.00%",
+    font=("Arial", 16, "bold"),
+    fg=RED,
+    bg=WHITE
+)
+
+spam_label.pack(
+    pady=(5, 7)
+)
+
+spam_bar_bg = tk.Frame(
+    probability_card,
+    bg=LIGHT_RED,
+    height=16
+)
+
+spam_bar_bg.pack(
+    fill="x",
+    padx=18
+)
+
+spam_bar = tk.Frame(
+    spam_bar_bg,
+    bg=RED,
+    height=16
+)
+
+spam_bar.place(
+    x=0,
+    y=0,
+    width=0,
+    height=16
+)
+
+
+# ==========================================================
+# HAM PROBABILITY
+# ==========================================================
+
+ham_label = tk.Label(
+    probability_card,
+    text="Ham\n0.00%",
+    font=("Arial", 16, "bold"),
+    fg=GREEN,
+    bg=WHITE
+)
+
+ham_label.pack(
+    pady=(14, 7)
+)
+
+ham_bar_bg = tk.Frame(
+    probability_card,
+    bg=LIGHT_GREEN,
+    height=16
+)
+
+ham_bar_bg.pack(
+    fill="x",
+    padx=18
+)
+
+ham_bar = tk.Frame(
+    ham_bar_bg,
+    bg=GREEN,
+    height=16
+)
+
+ham_bar.place(
+    x=0,
+    y=0,
+    width=0,
+    height=16
+)
+
+
+# ==========================================================
+# KEYWORD LABEL
+# ==========================================================
+
+keyword_label = tk.Label(
+    probability_card,
+    text="Suspicious Terms\nNone detected",
+    font=("Arial", 9),
+    fg=GRAY,
+    bg=WHITE,
+    justify="left",
+    anchor="w"
+)
+
+keyword_label.pack(
+    fill="x",
+    padx=18,
+    pady=15
+)
+
+
+# ==========================================================
+# EMAIL HISTORY
+# ==========================================================
+
+def show_history():
+
+    window = tk.Toplevel(root)
+
+    window.title(
+        "Email History"
+    )
+
+    window.geometry(
+        "700x500"
+    )
+
+    window.minsize(
+        500,
+        350
+    )
+
+    window.configure(
+        bg=WHITE
+    )
+
+    tk.Label(
+        window,
+        text="EMAIL ANALYSIS HISTORY",
+        font=("Arial", 18, "bold"),
+        bg=WHITE,
+        fg=DARK
+    ).pack(
+        pady=15
+    )
+
+    box = scrolledtext.ScrolledText(
+        window,
+        font=("Arial", 9),
+        wrap=tk.WORD
+    )
+
+    box.pack(
+        fill="both",
+        expand=True,
+        padx=18,
+        pady=10
+    )
+
+    if not history:
+
+        box.insert(
+            tk.END,
+            "No emails analyzed yet."
+        )
+
+    else:
+
+        for number, item in enumerate(
+            history,
+            1
+        ):
+
+            box.insert(
+                tk.END,
+                f"EMAIL #{number}\n"
+            )
+
+            box.insert(
+                tk.END,
+                f"Message: {item['text']}\n"
+            )
+
+            box.insert(
+                tk.END,
+                f"Category: {item['category']}\n"
+            )
+
+            box.insert(
+                tk.END,
+                f"Spam: {item['spam']:.2f}%\n"
+            )
+
+            box.insert(
+                tk.END,
+                f"Ham: {item['ham']:.2f}%\n"
+            )
+
+            box.insert(
+                tk.END,
+                "\n" + "-" * 55 + "\n\n"
+            )
+
+
+# ==========================================================
+# MODEL STATISTICS
+# ==========================================================
+
+def show_statistics():
+
+    spam_results = sum(
+        item["category"] == "Spam"
+        for item in history
+    )
+
+    ham_results = sum(
+        item["category"] == "Ham"
+        for item in history
+    )
+
+    messagebox.showinfo(
+        "Model Statistics",
+        f"""
+ORIAN SPAM EMAIL CLASSIFIER
+
+Algorithm:
+Multinomial Naive Bayes
+
+Training Spam Emails:
+{len(spam_emails)}
+
+Training Ham Emails:
+{len(ham_emails)}
+
+Total Training Emails:
+{len(spam_emails) + len(ham_emails)}
+
+Vocabulary Size:
+{len(model.vocabulary)}
+
+----------------------------
+
+Emails Analyzed:
+{len(history)}
+
+Spam Predictions:
+{spam_results}
+
+Ham Predictions:
+{ham_results}
+"""
+    )
+
+
+# ==========================================================
+# SAMPLE TESTS
+# ==========================================================
+
+def test_samples():
+
+    samples = [
+        "Congratulations you won a free prize",
+        "Please send me the class notes",
+        "Claim your cash reward now",
+        "Let's meet tomorrow at college",
+        "Click here to win free money",
+        "Thank you for helping me"
+    ]
+
+    window = tk.Toplevel(root)
+
+    window.title(
+        "Sample Tests"
+    )
+
+    window.geometry(
+        "700x500"
+    )
+
+    window.minsize(
+        500,
+        350
+    )
+
+    box = scrolledtext.ScrolledText(
+        window,
+        font=("Arial", 9),
+        wrap=tk.WORD
+    )
+
+    box.pack(
+        fill="both",
+        expand=True,
+        padx=18,
+        pady=18
+    )
+
+    for number, sample in enumerate(
+        samples,
+        1
+    ):
+
+        category, spam, ham = model.predict(
+            sample
+        )
+
+        box.insert(
+            tk.END,
+            f"TEST {number}\n"
+            f"Email: {sample}\n"
+            f"Prediction: {category}\n"
+            f"Spam: {spam:.2f}%\n"
+            f"Ham: {ham:.2f}%\n"
+            + "-" * 55
+            + "\n\n"
+        )
+
+
+# ==========================================================
+# ADD TRAINING EMAIL
+# ==========================================================
+
+def add_training_email():
+
+    window = tk.Toplevel(root)
+
+    window.title(
+        "Add Training Email"
+    )
+
+    window.geometry(
+        "600x430"
+    )
+
+    window.minsize(
+        450,
+        330
+    )
+
+    window.configure(
+        bg=WHITE
+    )
+
+    tk.Label(
+        window,
+        text="ADD TRAINING EMAIL",
+        font=("Arial", 18, "bold"),
+        bg=WHITE,
+        fg=DARK
+    ).pack(
+        pady=15
+    )
+
+    box = scrolledtext.ScrolledText(
+        window,
+        height=7,
+        font=("Arial", 10),
+        wrap=tk.WORD
+    )
+
+    box.pack(
+        fill="both",
+        expand=True,
+        padx=20,
+        pady=5
+    )
+
+    category = tk.StringVar(
+        value="Spam"
+    )
+
+    tk.Radiobutton(
+        window,
+        text="Spam",
+        variable=category,
+        value="Spam",
+        bg=WHITE
+    ).pack(
+        pady=4
+    )
+
+    tk.Radiobutton(
+        window,
+        text="Ham / Not Spam",
+        variable=category,
+        value="Ham",
+        bg=WHITE
+    ).pack()
+
+    def save():
+
+        text = box.get(
+            "1.0",
+            tk.END
+        ).strip()
+
+        if not text:
+
+            messagebox.showwarning(
+                "Empty Email",
+                "Please enter an email."
+            )
+
+            return
+
+        if category.get() == "Spam":
+            spam_emails.append(text)
+        else:
+            ham_emails.append(text)
+
+        model.train()
+
+        messagebox.showinfo(
+            "Success",
+            "Training email added and model retrained."
+        )
+
+        window.destroy()
+
+    tk.Button(
+        window,
+        text="ADD & RETRAIN",
+        command=save,
+        bg=BLUE,
+        fg=WHITE,
+        font=("Arial", 9, "bold"),
+        bd=0,
+        padx=25,
+        pady=9
+    ).pack(
+        pady=12
+    )
+
+
+# ==========================================================
+# TRAINING DATA
+# ==========================================================
+
+def show_training():
+
+    window = tk.Toplevel(root)
+
+    window.title(
+        "Training Dataset"
+    )
+
+    window.geometry(
+        "700x550"
+    )
+
+    window.minsize(
+        500,
+        350
+    )
+
+    box = scrolledtext.ScrolledText(
+        window,
+        font=("Arial", 9),
+        wrap=tk.WORD
+    )
+
+    box.pack(
+        fill="both",
+        expand=True,
+        padx=18,
+        pady=18
+    )
+
+    box.insert(
+        tk.END,
+        "================ SPAM EMAILS ================\n\n"
+    )
+
+    for i, email in enumerate(
+        spam_emails,
+        1
+    ):
+
+        box.insert(
+            tk.END,
+            f"{i}. {email}\n"
+        )
+
+    box.insert(
+        tk.END,
+        "\n================ HAM EMAILS ================\n\n"
+    )
+
+    for i, email in enumerate(
+        ham_emails,
+        1
+    ):
+
+        box.insert(
+            tk.END,
+            f"{i}. {email}\n"
+        )
+
+
+# ==========================================================
+# CLEAR HISTORY
+# ==========================================================
+
+def clear_history():
+
+    history.clear()
+
+    messagebox.showinfo(
+        "History",
+        "Email history has been cleared."
+    )
+
+
+# ==========================================================
+# SIDEBAR MENU
+# ==========================================================
+
+sidebar_button(
+    "Dashboard",
+    clear_email
+)
+
+sidebar_button(
+    "Email History",
+    show_history
+)
+
+sidebar_button(
+    "Model Statistics",
+    show_statistics
+)
+
+sidebar_button(
+    "Test Sample Emails",
+    test_samples
+)
+
+sidebar_button(
+    "Add Training Email",
+    add_training_email
+)
+
+sidebar_button(
+    "Training Examples",
+    show_training
+)
+
+sidebar_button(
+    "Clear History",
+    clear_history
+)
+
+
+# ==========================================================
+# EXIT BUTTON
+# ==========================================================
+
+tk.Button(
+    sidebar,
+    text="Exit",
+    command=root.destroy,
+    font=("Arial", 9),
+    anchor="w",
+    bg=DARK,
+    fg="#f87171",
+    activebackground="#1e293b",
+    activeforeground="#ef4444",
+    bd=0,
+    padx=12,
+    pady=10,
+    cursor="hand2"
+).pack(
+    side="bottom",
+    fill="x",
+    pady=8
+)
+
+
+# ==========================================================
+# FOOTER
+# ==========================================================
+
+tk.Label(
+    main,
+    text="Naive Bayes Machine Learning • Orian Spam Email Classifier",
+    font=("Arial", 8),
+    fg=GRAY,
+    bg=BG
+).pack(
+    side="bottom",
+    pady=4
+)
+
+
+# ==========================================================
+# START APPLICATION
+# ==========================================================
+
+root.mainloop()
